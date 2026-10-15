@@ -100,17 +100,23 @@ export async function checkHealth(): Promise<Health> {
 
 let clientPromise: Promise<any> | null = null;
 
+/**
+ * The chain must be the library's own definition, not a hand-rolled lookalike.
+ * genlayer-js reads fields we would never guess — `defaultNumberOfInitialValidators`,
+ * for one — off `chain` while encoding a write, and a missing one throws
+ * ("Cannot convert undefined to a BigInt") before the transaction is ever sent.
+ * We only override the RPC endpoint.
+ */
+async function studioDevChain() {
+  const chains: any = await import("genlayer-js/chains");
+  return { ...chains.studioDevnet, rpcUrls: { default: { http: [RPC_URL] } } };
+}
+
 async function getClient() {
   if (!clientPromise) {
     clientPromise = (async () => {
       const gl: any = await import("genlayer-js");
-      const chain = {
-        id: CHAIN_ID,
-        name: "GenLayer Studio Dev",
-        rpcUrls: { default: { http: [RPC_URL] } },
-        nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-      };
-      return gl.createClient({ chain, endpoint: RPC_URL });
+      return gl.createClient({ chain: await studioDevChain(), endpoint: RPC_URL });
     })();
   }
   return clientPromise;
@@ -252,17 +258,35 @@ const POLL_ATTEMPTS = 100;
 const POLL_INTERVAL_MS = 5_000;
 const CONSENSUS_MAX_ROTATIONS = 6;
 
+/**
+ * A write on Studio Dev is rejected client-side with `FeeValueMustBeNonZero(1)`
+ * unless it carries a complete fee distribution *and* a non-zero deposit; the
+ * SDK does not infer one here. This is the distribution a successful deploy on
+ * this network uses. The wallet must hold `value + feeValue`; the deposit is
+ * mostly returned once the round settles.
+ */
+const WRITE_FEES = {
+  distribution: {
+    rotations: [3],
+    appealRounds: 0,
+    totalMessageFees: 0,
+    executionConsumed: 0,
+    receiptFeeMaxGasPrice: "300000000",
+    storageFeeMaxGasPrice: "300000000",
+    maxPriceGenPerTimeUnit: "2",
+    executionBudgetPerRound: "25000000000000000",
+    leaderTimeunitsAllocation: "100",
+    validatorTimeunitsAllocation: "200",
+  },
+  feeValue: 100000000000010352n,
+};
+
 async function writeClient() {
   if (!CONTRACT_ADDRESS) throw new Error("contract address is not configured");
   await ensureChain();
   const account = await connect();
   const gl: any = await import("genlayer-js");
-  const chain = {
-    id: CHAIN_ID,
-    name: "GenLayer Studio Dev",
-    rpcUrls: { default: { http: [RPC_URL] } },
-    nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-  };
+  const chain = await studioDevChain();
   return gl.createClient({ chain, endpoint: RPC_URL, account, provider: eth() });
 }
 
@@ -273,6 +297,7 @@ export async function write(method: string, args: unknown[], value = 0n): Promis
     functionName: method,
     args,
     value,
+    fees: WRITE_FEES,
     consensusMaxRotations: CONSENSUS_MAX_ROTATIONS,
   });
 }
