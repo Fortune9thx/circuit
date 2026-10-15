@@ -20,7 +20,7 @@ What is true right now, and what is not yet true. Nothing here is aspirational.
 | Deployed to Studio Dev             | done     | `0x9D1F3a9e0CF3679dc631fd00D39F10e158Bbf923` |
 | Live schema verified on chain      | done     | `gen_getContractSchema` → 14 methods; `get_config` returns the expected constants |
 | Deployed frontend URL              | done     | https://circuit-rose-eta.vercel.app |
-| Pushed to GitHub                   | **not yet** | pending |
+| Pushed to GitHub                   | done     | https://github.com/Fortune9thx/circuit; CI green |
 
 ## Deployment
 
@@ -35,10 +35,9 @@ What is true right now, and what is not yet true. Nothing here is aspirational.
 - **Interface:** https://circuit-rose-eta.vercel.app — built with the contract
   address embedded and verified present in the deployed bundle; deep links
   resolve.
-
-## Not yet done
-
-1. Create the repository and push.
+- **Repository:** https://github.com/Fortune9thx/circuit.
+- **CI:** the contract job (ruff, pytest, bundle reproducibility, `genvm-lint
+  lint`) and the frontend job (typecheck, build) both pass on `main`.
 
 Studio Dev is a preview network whose state resets. If the schema stops
 resolving, treat CIRCUIT as undeployed until it is redeployed — the interface
