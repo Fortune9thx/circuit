@@ -12,16 +12,43 @@ import { describeOutcome, needsFinality } from "./tx";
 
 let rpcId = 1;
 
+const RPC_TIMEOUT_MS = 15_000;
+const RPC_ATTEMPTS = 3;
+
+/**
+ * One JSON-RPC call with a hard timeout. Transport failures (timeout, network,
+ * non-2xx) are retried by `rpc`; a JSON-RPC `error` object is the chain's own
+ * answer and is marked `definitive` so it is never retried.
+ */
 async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const res = await fetch(RPC_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method, params }),
-  });
-  if (!res.ok) throw new Error(`rpc ${method}: http ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(`rpc ${method}: ${json.error.message ?? "failed"}`);
-  return json.result as T;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= RPC_ATTEMPTS; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), RPC_TIMEOUT_MS);
+    try {
+      const res = await fetch(RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method, params }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error(`rpc ${method}: http ${res.status}`);
+      const json = await res.json();
+      if (json.error) {
+        throw Object.assign(new Error(`rpc ${method}: ${json.error.message ?? "failed"}`), {
+          definitive: true,
+        });
+      }
+      return json.result as T;
+    } catch (e) {
+      lastError = e;
+      if ((e as { definitive?: boolean } | null)?.definitive) throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt < RPC_ATTEMPTS) await new Promise((r) => setTimeout(r, 400 * attempt));
+  }
+  throw lastError instanceof Error ? lastError : new Error(`rpc ${method}: unreachable`);
 }
 
 /** The banner states, evaluated in this order. */

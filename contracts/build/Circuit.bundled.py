@@ -501,7 +501,7 @@ def normalize_evidence(url, status, body):
         "status": st,
         "ok": ok,
         "text": clean,
-        "digest": sha256_hex(clean) if ok else sha256_hex("unreadable"),
+        "digest": sha256_hex(text) if ok else sha256_hex("unreadable"),
     }
 
 
@@ -556,6 +556,11 @@ def build_comparable(raw, evidence_digests, allowed_clause_ids=None):
         "decision": decision,
         "supporting_sources": sources,
         "clause_ids": clauses,
+        # The full-document fingerprints themselves, echoed alongside the
+        # findings hash so cross-validator agreement is not merely a comparison
+        # of verdicts and source indices: validators must have fetched the same
+        # bytes, not just reached the same class of answer.
+        "evidence": list(evidence_digests),
         "findings_hash": findings_hash(decision, sources, clauses, evidence_digests),
         "code": code,
     }

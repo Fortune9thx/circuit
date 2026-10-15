@@ -63,6 +63,25 @@ def test_normalize_evidence_ok_and_unreadable():
     assert ok["digest"] != bad["digest"]
 
 
+def test_digest_covers_content_past_the_excerpt_cap():
+    # Two documents share their entire excerpt (the first MAX_FETCH_CHARS, which
+    # is all the model is ever shown) but differ afterwards. The model cannot
+    # tell them apart, so the fingerprint must: otherwise validators could agree
+    # and trip a circuit on evidence neither of them actually compared.
+    from circuitlib.ssrf import MAX_FETCH_CHARS
+
+    head = "x" * MAX_FETCH_CHARS
+    a = J.normalize_evidence("https://e.com", 200, head + "aaa")
+    b = J.normalize_evidence("https://e.com", 200, head + "bbb")
+    assert a["text"] == b["text"]  # identical excerpt reaches the model
+    assert a["digest"] != b["digest"]  # but the full-document fingerprints differ
+
+
+def test_comparable_echoes_evidence_fingerprints():
+    c = J.build_comparable({"decision": "NOT_CONFIRMED"}, ["d0", "d1"])
+    assert c["evidence"] == ["d0", "d1"]
+
+
 def test_strip_html_drops_script_bodies():
     text = J.strip_html("<script>evil()</script><p>real</p>")
     assert "evil" not in text and "real" in text

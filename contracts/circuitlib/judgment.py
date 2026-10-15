@@ -118,6 +118,16 @@ def strip_html(raw):
 def normalize_evidence(url, status, body):
     """Normalize one fetched document into a prompt-ready, digestible record.
 
+    The digest is taken over the *entire* stripped document, not the bounded
+    excerpt handed to the model. The model only ever reads the first
+    MAX_FETCH_CHARS of a page, so material past that cut would otherwise be
+    invisible to the decision *and* to cross-validator agreement: two validators
+    could fetch documents that differ only beyond the cutoff, agree, and trip a
+    circuit on evidence neither of them actually compared. Fingerprinting the
+    full text makes any divergence past the cutoff — not just within it — break
+    consensus and fail closed (see ``build_comparable``, which folds these
+    digests into ``findings_hash``).
+
     An unreadable document gets a fixed digest marker rather than the digest of
     an empty string, so two validators who both fail to fetch agree with each
     other while a validator that succeeds where the leader failed does not.
@@ -131,7 +141,7 @@ def normalize_evidence(url, status, body):
         "status": st,
         "ok": ok,
         "text": clean,
-        "digest": sha256_hex(clean) if ok else sha256_hex("unreadable"),
+        "digest": sha256_hex(text) if ok else sha256_hex("unreadable"),
     }
 
 
@@ -201,6 +211,11 @@ def build_comparable(raw, evidence_digests, allowed_clause_ids=None):
         "decision": decision,
         "supporting_sources": sources,
         "clause_ids": clauses,
+        # The full-document fingerprints themselves, echoed alongside the
+        # findings hash so cross-validator agreement is not merely a comparison
+        # of verdicts and source indices: validators must have fetched the same
+        # bytes, not just reached the same class of answer.
+        "evidence": list(evidence_digests),
         "findings_hash": findings_hash(decision, sources, clauses, evidence_digests),
         "code": code,
     }

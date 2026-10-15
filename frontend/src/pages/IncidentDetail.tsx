@@ -15,7 +15,7 @@ import {
   Spinner,
   StatusPill,
 } from "../components/ui";
-import { getCapability, getClaimable, getIncident } from "../lib/chain";
+import { getCapability, getClaimable, getConfig, getIncident } from "../lib/chain";
 import { fromNow, gen, shortHash, until } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 
@@ -27,6 +27,7 @@ export default function IncidentDetail() {
   const claimTx = useTx();
 
   const inc = useAsync(() => (live ? getIncident(id) : Promise.resolve(null)), [live, id]);
+  const cfg = useAsync(() => (live ? getConfig() : Promise.resolve(null)), [live]);
   const capId = inc.data?.capability_id ?? "";
   const cap = useAsync(
     () => (live && capId ? getCapability(capId) : Promise.resolve(null)),
@@ -109,8 +110,11 @@ export default function IncidentDetail() {
           (() => {
             const e = inc.data!;
             const now = Math.floor(Date.now() / 1000);
-            const permissionlessAt = e.created_at + 1800;
-            const stuckAt = e.created_at + 86400;
+            // The delays are contract configuration, not UI constants. Until the
+            // config read lands we say nothing about timing rather than guess.
+            const cfgReady = cfg.data !== null;
+            const permissionlessAt = e.created_at + (cfg.data?.assess_delay_seconds ?? 0);
+            const stuckAt = e.created_at + (cfg.data?.stuck_timeout_seconds ?? 0);
             return (
               <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
                 <div className="card space-y-6 p-7">
@@ -184,14 +188,15 @@ export default function IncidentDetail() {
                         {tx.busy ? "Assessing…" : "Assess now"}
                       </button>
                       <span className="text-[12px] text-mute">
-                        Anyone may assess{" "}
-                        {now >= permissionlessAt
-                          ? "now."
-                          : `in ${until(permissionlessAt, now)}.`}
+                        {!cfgReady
+                          ? "Timing loads with the contract config."
+                          : now >= permissionlessAt
+                            ? "Anyone may assess now."
+                            : `Anyone may assess in ${until(permissionlessAt, now)}.`}
                       </span>
                     </div>
                   )}
-                  {e.status === "OPEN" && now >= stuckAt && (
+                  {e.status === "OPEN" && cfgReady && now >= stuckAt && (
                     <button className="btn-ghost" onClick={expireStuck} disabled={tx.busy}>
                       Refund as stuck
                     </button>

@@ -73,3 +73,22 @@ Expect 14 methods: 7 views and 7 writes, one constructor parameter.
   before any validator sees it.
 - Consume a capability with any field changed. It must be rejected.
 - Assess the same incident twice. The second call must be rejected.
+
+## 9. Agreement is on content, not just verdicts
+
+Read `normalize_evidence` in `circuitlib/judgment.py`. The `digest` it returns is
+taken over the **whole** stripped document, not the `MAX_FETCH_CHARS` excerpt the
+model is shown, and `build_comparable` echoes those digests and folds them into
+`findings_hash`. So two validators agree only if they fetched the same bytes —
+and if they had agreed on the bounded excerpt alone, a divergence past the cutoff
+would have been invisible to consensus. `test_digest_covers_content_past_the_excerpt_cap`
+pins this: two documents that differ only after the cutoff keep an identical
+prompt excerpt but must have different digests.
+
+## 10. Consensus is exercised under a fake runtime
+
+`strict_eq` and the one-nondet-path rule are checked structurally by
+`genvm-lint`, and the judgement pipeline is driven end to end in `pytest`
+through `tests/fake_genlayer.py`, which models the leader/validator split. There
+is no `gltest` fixture in this repository, so the suite does not exercise the
+real runner; `genvm-lint check` and a live deploy are what stand in for that.
