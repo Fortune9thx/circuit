@@ -19,7 +19,7 @@ The whole protocol is one contract. Deployable on GenLayer Studio Dev
 ## Deployed
 
 - **Contract:** [`0x9D1F3a9e0CF3679dc631fd00D39F10e158Bbf923`](https://explorer-studio-dev.genlayer.com/address/0x9D1F3a9e0CF3679dc631fd00D39F10e158Bbf923) on Studio Dev, chain `61997`
-- **Interface:** _pending_
+- **Interface:** [circuit-rose-eta.vercel.app](https://circuit-rose-eta.vercel.app)
 
 Studio Dev state resets periodically; see [STATUS.md](STATUS.md) for the current
 state rather than assuming this address still resolves.
