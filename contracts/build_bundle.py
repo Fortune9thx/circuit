@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Inline circuitlib into Circuit.py to produce the single deployable file.
 
 GenVM validates one file, and sibling imports fail validation, so the modules
