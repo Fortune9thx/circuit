@@ -13,6 +13,8 @@ export type IncidentStatus = "OPEN" | "ASSESSED" | "EXPIRED";
 export interface Charter {
   charter_id: string;
   author: string;
+  /** The only address allowed to consume a capability this charter issues. */
+  executor: string;
   policy: string;
   evidence_patterns: string[];
   target: string;
@@ -57,6 +59,8 @@ export interface Capability {
   incident_id: string;
   charter_id: string;
   digest: string;
+  /** The only address allowed to consume this capability. */
+  executor: string;
   target: string;
   action_class: string;
   scope: string;

@@ -270,6 +270,7 @@ def charter_digest(
     bond_amount,
     fee_amount,
     treasury,
+    executor,
 ):
     return digest_fields({
         "charter_id": str(charter_id),
@@ -281,6 +282,7 @@ def charter_digest(
         "bond_amount": int(bond_amount),
         "fee_amount": int(fee_amount),
         "treasury": str(treasury),
+        "executor": str(executor),
     })
 
 
@@ -830,10 +832,19 @@ class Circuit(gl.contract.Contract):
         max_duration_minutes: int,
         bond_amount: int,
         fee_amount: int,
+        executor: str = "",
     ) -> str:
         handle = _guard(lambda: normalize_charter_id(charter_id))
         if self.charters.get(handle) is not None:
             _err("charter id already registered")
+
+        author = self._sender()
+        if str(executor).strip():
+            executor_hex = normalize_address(executor)
+            if not executor_hex:
+                _err("executor address is invalid")
+        else:
+            executor_hex = author
 
         pol = _guard(lambda: normalize_policy(policy))
         pats = _guard(lambda: normalize_patterns(evidence_patterns))
@@ -851,10 +862,13 @@ class Circuit(gl.contract.Contract):
             _err("fee must not exceed the bond")
 
         treasury_hex = self.treasury.as_hex.lower()
-        chash = charter_digest(handle, pol, pats, tgt, ac, md, bond, fee, treasury_hex)
+        chash = charter_digest(
+            handle, pol, pats, tgt, ac, md, bond, fee, treasury_hex, executor_hex
+        )
         charter = {
             "charter_id": handle,
-            "author": self._sender(),
+            "author": author,
+            "executor": executor_hex,
             "policy": pol,
             "evidence_patterns": pats,
             "target": tgt,
@@ -929,6 +943,7 @@ class Circuit(gl.contract.Contract):
             "evidence_urls": urls,
             "digest": digest,
             "assessor": self._sender(),
+            "executor": charter["executor"],
             "bond": str(value - fee),
             "fee": str(fee),
             "status": ST_OPEN,
@@ -1010,6 +1025,7 @@ class Circuit(gl.contract.Contract):
             "incident_id": incident["incident_id"],
             "charter_id": incident["charter_id"],
             "digest": incident["digest"],
+            "executor": incident["executor"],
             "target": incident["target"],
             "action_class": incident["action_class"],
             "scope": incident["scope"],
@@ -1038,6 +1054,8 @@ class Circuit(gl.contract.Contract):
         capability = self._load_capability(capability_id)
         if capability is None:
             _err("capability not found")
+        if self._sender() != str(capability.get("executor", "")).lower():
+            _err("caller is not the authorized executor")
         if capability["consumed"]:
             _err("capability already consumed")
         if capability["expired"] or self._now() > int(capability["expires_at"]):

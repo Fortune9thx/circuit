@@ -249,6 +249,9 @@ export default function IncidentDetail() {
                         </span>
                       </div>
                       <Field label="Id">{cap.data.capability_id}</Field>
+                      <Field label="Authorized executor">
+                        <AddressLink value={cap.data.executor} />
+                      </Field>
                       <Field label="Expires">
                         {cap.data.consumed
                           ? `consumed ${fromNow(cap.data.consumed_at)}`
@@ -258,9 +261,16 @@ export default function IncidentDetail() {
                       {!cap.data.consumed && !cap.data.expired && inc.data.decision === "TRIGGER_CONFIRMED" && (
                         <div className="space-y-3 border-t border-white/50 pt-4">
                           <p className="text-[12px] text-mute">
-                            Consuming re-derives the digest from these fields. Any mismatch is
-                            rejected.
+                            Only the authorized executor can consume. Consuming re-derives the
+                            digest from these fields; any mismatch is rejected.
                           </p>
+                          {account && account.toLowerCase() !== cap.data.executor.toLowerCase() && (
+                            <p className="rounded-chip border border-white/70 bg-white/50 p-3 text-[12px] text-mute">
+                              You are connected as {shortHash(account, 6)}; this capability belongs
+                              to {shortHash(cap.data.executor, 6)}, so the transaction will be
+                              rejected.
+                            </p>
+                          )}
                           {(
                             [
                               "incident_key",
@@ -301,7 +311,14 @@ export default function IncidentDetail() {
                               />
                             </label>
                           ))}
-                          <button className="btn-primary w-full" onClick={consume} disabled={tx.busy}>
+                          <button
+                            className="btn-primary w-full"
+                            onClick={consume}
+                            disabled={
+                              tx.busy ||
+                              (!!account && account.toLowerCase() !== cap.data.executor.toLowerCase())
+                            }
+                          >
                             {tx.busy ? "Consuming…" : "Consume capability"}
                           </button>
                         </div>

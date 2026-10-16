@@ -27,7 +27,7 @@ Four pure modules, no `genlayer` imports, each independently testable.
 | Module           | Responsibility |
 | ---------------- | -------------- |
 | `ssrf.py`        | Evidence URL and host-pattern validation. https only, default port, no IP literals or credentials, public domains only; a URL must match a charter's frozen pattern. |
-| `canonicalize.py`| Field validators, canonical JSON, and the digest functions `charter_digest` / `incident_digest`. |
+| `canonicalize.py`| Field validators, canonical JSON, and the digest functions `charter_digest` (which commits the executor address) / `incident_digest`. |
 | `judgment.py`    | Decision coercion, comparable construction, `findings_hash`, evidence normalization (HTML strip, fence-collapse, control-char removal), prompt building. |
 | `accounting.py`  | `settle(decision, attached, fee)` and the conservation check. |
 
@@ -54,6 +54,15 @@ Writes (7): `register_charter`, `open_incident` (payable), `assess`,
 
 Views (7): `get_config`, `get_charter`, `get_charter_ids`, `get_incident`,
 `get_capability`, `get_board`, `get_claimable`.
+
+### Capability authorization
+
+A capability may be consumed only by its **executor** — the address frozen into
+the charter at registration (`register_charter(..., executor=...)`), defaulting
+to the charter's author when omitted. The executor is copied onto the incident at
+open time and onto the capability at issuance, so `consume_capability` rejects
+any other caller before it looks at the digest. The executor is part of
+`charter_digest`, so it cannot be changed without changing the charter's identity.
 
 ### The one nondeterministic path
 

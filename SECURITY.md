@@ -25,8 +25,10 @@ The design assumes every off-chain input is hostile:
   sorted supporting-source indices, sorted clause ids, and a findings hash over
   the normalized evidence — is compared across validators.
 - **The caller.** Nothing about a judgment comes from the caller's claims about
-  themselves. `consume_capability` re-derives the canonical digest from its
-  arguments and rejects any mismatch.
+  themselves. `consume_capability` is bound to the capability's executor — the
+  address frozen into the charter at registration, the author by default — so any
+  other caller is rejected outright; the authorized executor must then re-derive
+  the canonical digest from its arguments, and any mismatch rejects.
 
 ### Fail-closed invariants
 
@@ -40,6 +42,9 @@ The design assumes every off-chain input is hostile:
 4. `claim()` is the only function that moves value out, it zeroes the balance
    before transferring, and it can only ever send an address its own
    already-credited amount. There is no admin path that seizes or force-issues.
+5. A capability can be consumed only by its executor. An unrelated caller is
+   rejected before the digest is even checked, so it cannot spend a capability
+   that is not its own nor invalidate one that is.
 
 ### SSRF and resource bounds
 

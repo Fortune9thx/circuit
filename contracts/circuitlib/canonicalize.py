@@ -67,8 +67,14 @@ def charter_digest(
     bond_amount,
     fee_amount,
     treasury,
+    executor,
 ):
-    """Digest of a charter's immutable content, frozen at registration."""
+    """Digest of a charter's immutable content, frozen at registration.
+
+    `executor` is part of the frozen content: it names the only address allowed
+    to consume a capability the charter produces, so it must not be mutable
+    without changing the charter's identity.
+    """
     return digest_fields({
         "charter_id": str(charter_id),
         "policy": str(policy),
@@ -79,6 +85,7 @@ def charter_digest(
         "bond_amount": int(bond_amount),
         "fee_amount": int(fee_amount),
         "treasury": str(treasury),
+        "executor": str(executor),
     })
 
 

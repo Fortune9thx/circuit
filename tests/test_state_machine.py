@@ -19,6 +19,7 @@ OWNER = "0x" + "aa" * 20
 ASSESSOR = "0x" + "bb" * 20
 TREASURY = "0x" + "cc" * 20
 OTHER = "0x" + "dd" * 20
+EXECUTOR = "0x" + "ee" * 20
 
 T0 = 1_700_000_000
 EVIDENCE_URL = "https://a.example.com/report"
@@ -81,8 +82,20 @@ def test_register_charter_and_view(app, gl):
     charter = json.loads(app.get_charter("main"))
     assert charter["charter_id"] == "main"
     assert charter["author"] == OWNER
+    # With no executor supplied, the author is the executor.
+    assert charter["executor"] == OWNER
     assert charter["evidence_patterns"] == ["*.example.com"]
     assert len(charter["charter_hash"]) == 64
+
+
+def test_register_binds_explicit_executor(app, gl):
+    register(app, gl, executor=EXECUTOR)
+    assert json.loads(app.get_charter("main"))["executor"] == EXECUTOR
+
+
+def test_register_rejects_bad_executor(app, gl):
+    with pytest.raises(UserError):
+        register(app, gl, executor="not-an-address")
 
 
 def test_register_rejects_duplicate(app, gl):
@@ -268,7 +281,7 @@ def test_stranger_can_assess_after_delay(app, gl, nondet):
 
 
 def _confirmed(app, gl, nondet):
-    register(app, gl)
+    register(app, gl, executor=EXECUTOR)
     iid = open_incident(app, gl)
     nondet.web[EVIDENCE_URL] = (200, "outage")
     agree(nondet, "TRIGGER_CONFIRMED")
@@ -279,25 +292,42 @@ def _confirmed(app, gl, nondet):
     return inc["capability_id"], chash
 
 
-def test_consume_capability_once(app, gl, nondet):
+def test_capability_carries_its_executor(app, gl, nondet):
+    cap_id, _ = _confirmed(app, gl, nondet)
+    assert json.loads(app.get_capability(cap_id))["executor"] == EXECUTOR
+
+
+def test_executor_consumes_capability_once(app, gl, nondet):
     cap_id, chash = _confirmed(app, gl, nondet)
-    set_sender(gl, OTHER)
+    set_sender(gl, EXECUTOR)
     assert app.consume_capability(cap_id, "inc-1", chash, "payments", "deploy", SCOPE, 30) == cap_id
     assert json.loads(app.get_capability(cap_id))["consumed"] is True
     with pytest.raises(UserError):
         app.consume_capability(cap_id, "inc-1", chash, "payments", "deploy", SCOPE, 30)
 
 
+def test_unrelated_address_cannot_consume(app, gl, nondet):
+    cap_id, chash = _confirmed(app, gl, nondet)
+    # A stranger with the exact right arguments still cannot spend the
+    # capability: consumption is bound to the charter's executor.
+    set_sender(gl, OTHER)
+    with pytest.raises(UserError):
+        app.consume_capability(cap_id, "inc-1", chash, "payments", "deploy", SCOPE, 30)
+    cap = json.loads(app.get_capability(cap_id))
+    assert cap["consumed"] is False
+    assert cap["executor"] == EXECUTOR
+
+
 def test_consume_capability_digest_mismatch_rejected(app, gl, nondet):
     cap_id, chash = _confirmed(app, gl, nondet)
-    set_sender(gl, OTHER)
+    set_sender(gl, EXECUTOR)
     with pytest.raises(UserError):
         app.consume_capability(cap_id, "inc-1", chash, "payments", "deploy", "prod-east", 30)
 
 
 def test_capability_expires(app, gl, nondet):
     cap_id, chash = _confirmed(app, gl, nondet)
-    set_sender(gl, OTHER)
+    set_sender(gl, EXECUTOR)
     set_time(gl, T0 + 30 * 60 + 10)
     with pytest.raises(UserError):
         app.consume_capability(cap_id, "inc-1", chash, "payments", "deploy", SCOPE, 30)

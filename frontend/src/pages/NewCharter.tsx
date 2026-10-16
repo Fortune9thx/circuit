@@ -26,6 +26,7 @@ export default function NewCharter() {
   const [maxDuration, setMaxDuration] = useState("60");
   const [bond, setBond] = useState("0.01");
   const [fee, setFee] = useState("0.001");
+  const [executor, setExecutor] = useState("");
 
   const live = health.state === "live";
   const patternList = splitPatterns(patterns);
@@ -42,6 +43,7 @@ export default function NewCharter() {
       clampInt(maxDuration, 5, 120, 60),
       toWei(bond),
       toWei(fee),
+      executor.trim(),
     ]);
     if (outcome?.ok) nav(`/app/charters/${charterId.trim().toLowerCase()}`);
   };
@@ -140,6 +142,20 @@ export default function NewCharter() {
             </label>
           </div>
 
+          <label className="block">
+            <span className="label">Authorized executor (optional)</span>
+            <input
+              className="field font-mono"
+              placeholder="0x… — leave empty to name your own wallet"
+              value={executor}
+              onChange={(e) => setExecutor(e.target.value)}
+            />
+            <span className="mt-1 block text-[12px] text-mute">
+              The only address that may consume a capability this charter issues. Defaults to the
+              author. Frozen into the charter hash — it cannot change later.
+            </span>
+          </label>
+
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <button className="btn-primary" onClick={submit} disabled={!canSubmit}>
               {tx.busy ? "Submitting…" : "Register charter"}
@@ -157,6 +173,7 @@ export default function NewCharter() {
               <li>The <strong className="text-ink">host allow-list</strong> is enforced by SSRF rules — https, default port, public domains only.</li>
               <li>The <strong className="text-ink">bond</strong> is returned in full on every non-confirming verdict.</li>
               <li>A <strong className="text-ink">fee</strong> moves to the recorded treasury only on a confirmed trigger.</li>
+              <li>The <strong className="text-ink">executor</strong> is the only address that can consume an issued capability; anyone else is rejected.</li>
             </ul>
           </div>
           <div className="glass p-6">

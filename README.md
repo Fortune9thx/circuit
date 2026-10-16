@@ -10,15 +10,16 @@ under the Equivalence Principle, exactly one of six discrete verdicts.
 
 Only `TRIGGER_CONFIRMED` issues a **capability** — a single-use, expiring
 artifact whose digest is recomputed at freeze, at issuance, and at consumption;
-any mismatch rejects. Every other verdict, including every technical failure,
-refunds the bond in full and issues nothing.
+any mismatch rejects. A capability can be consumed only by its **executor**, the
+address frozen into the charter at registration. Every other verdict, including
+every technical failure, refunds the bond in full and issues nothing.
 
 The whole protocol is one contract. Deployable on GenLayer Studio Dev
 (chain `61997`) and Studio Next only.
 
 ## Deployed
 
-- **Contract:** [`0xBb48Fa9a0aAe40C03A6F792b209aA761054F1250`](https://explorer-studio-dev.genlayer.com/address/0xBb48Fa9a0aAe40C03A6F792b209aA761054F1250) on Studio Dev, chain `61997`
+- **Contract:** [`0x7689bE9D97533cA981EC5c2782dE01326b37A8D1`](https://explorer-studio-dev.genlayer.com/address/0x7689bE9D97533cA981EC5c2782dE01326b37A8D1) on Studio Dev, chain `61997`
 - **Interface:** [circuit-rose-eta.vercel.app](https://circuit-rose-eta.vercel.app)
 
 Studio Dev state resets periodically; see [STATUS.md](STATUS.md) for the current
@@ -47,6 +48,9 @@ reproduced exactly when the capability is consumed.
   the verdict class and the sorted source/clause sets — never on prose.
 - **Unreadable evidence can never trigger.** If any evidence URL fails to fetch
   or parse, the verdict is `INSUFFICIENT` and the model is never consulted.
+- **A capability is bound to one executor.** Consumption is rejected for every
+  caller except the address named in the charter at registration (the author by
+  default), so an unrelated account cannot spend or invalidate it.
 - **Money is exact.** Bonds and fees are stored as decimal strings; `0.01 GEN`
   is `1e16` wei, above JavaScript's `2**53` exact-integer range.
 - **Escape hatches on every GEN-holding status.** A bonded incident can always be

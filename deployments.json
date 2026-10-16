@@ -4,20 +4,13 @@
   "rpc": "https://studio-dev.genlayer.com/api",
   "explorer": "https://explorer-studio-dev.genlayer.com",
   "contract": "Circuit",
-  "address": "0xBb48Fa9a0aAe40C03A6F792b209aA761054F1250",
-  "deploy_tx": "0xb6ec433233ad0eb6ac94ac57b2f2f9bc05933d85d3a2f2f254bd82a732dc8989ed",
-  "deploy_result": "MAJORITY_AGREE",
+  "address": "0x7689bE9D97533cA981EC5c2782dE01326b37A8D1",
+  "deploy_tx": "0x47976bbdfbf2ab7dc55dc046f88c61ba6e309f1aed43d07726ec72cd03700a39",
+  "deploy_result": "ACCEPTED",
   "treasury": "0xc6e6d3b2accaececeb40ad4bd3df123ddcb4e537",
   "bundled_file": "contracts/build/Circuit.bundled.py",
-  "bundled_sha256": "7f26c236960fddde8536d666eae5e4eee93c57d819a2201f1c2c54bbec76e9a9",
-  "bundled_bytes": 41999,
+  "bundled_sha256": "3030f273b8bf3da1b657726e364b1118a47f4eb6830d3a169f5fce64bf26240c",
+  "bundled_bytes": 42620,
   "methods": 14,
-  "smoke_writes": [
-    {
-      "method": "register_charter",
-      "tx": "0xcb6bb0a6e21f43fdb72c759add10b2ce38f1c143938aaffe63c87e6542c53731",
-      "result": "MAJORITY_AGREE"
-    }
-  ],
-  "notes": "Payable writes (open_incident) are not driven through the genlayer CLI, which exposes no msg.value flag; they require a genlayer-js signer."
+  "notes": "register_charter takes an optional executor address; a capability can be consumed only by that executor. Payable writes (open_incident) are not driven through the genlayer CLI, which exposes no msg.value flag; they require a genlayer-js signer."
 }

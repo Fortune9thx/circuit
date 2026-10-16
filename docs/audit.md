@@ -29,12 +29,17 @@ anything unrecognized becomes `INSUFFICIENT`. A trigger with no cited sources is
 downgraded.
 Tests: `test_judgment_pure.py`, `test_trigger_without_sources_is_downgraded`.
 
-### 4. Capabilities are single-use, expiring, digest-bound
+### 4. Capabilities are single-use, expiring, digest-bound, and executor-bound
 
-Enforced: `consume_capability` re-derives the digest from the caller's arguments
-and rejects on any mismatch with either the stored capability or the incident; it
-rejects a consumed or expired capability.
-Tests: `test_consume_capability_once`,
+Enforced: `consume_capability` requires the caller to be the capability's
+`executor` — the address frozen into the charter at registration — and rejects
+any other caller before it checks anything else. It then re-derives the digest
+from the caller's arguments and rejects on any mismatch with either the stored
+capability or the incident; it rejects a consumed or expired capability.
+Tests: `test_executor_consumes_capability_once`,
+`test_unrelated_address_cannot_consume` (a stranger with the exact right
+arguments is still rejected and the capability stays unconsumed),
+`test_capability_carries_its_executor`,
 `test_consume_capability_digest_mismatch_rejected`, `test_capability_expires`.
 
 ### 5. Escrow is conserved

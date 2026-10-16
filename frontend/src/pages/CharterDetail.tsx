@@ -63,6 +63,11 @@ export default function CharterDetail() {
                       <AddressLink value={c.author} />
                     </Field>
                     <div className="mt-4">
+                      <Field label="Authorized executor">
+                        <AddressLink value={c.executor} />
+                      </Field>
+                    </div>
+                    <div className="mt-4">
                       <Field label="Registered">{fromNow(c.created_at)}</Field>
                     </div>
                     <div className="mt-4">

@@ -38,6 +38,7 @@ from circuitlib.canonicalize import (
     charter_digest,
     incident_digest,
     normalize_action_class,
+    normalize_address,
     normalize_charter_id,
     normalize_incident_key,
     normalize_policy,
@@ -271,11 +272,27 @@ class Circuit(gl.contract.Contract):
         max_duration_minutes: int,
         bond_amount: int,
         fee_amount: int,
+        executor: str = "",
     ) -> str:
-        """Register an immutable charter. The sender becomes its author."""
+        """Register an immutable charter. The sender becomes its author.
+
+        `executor` is the only address allowed to consume a capability this
+        charter produces. Leave it empty to make the author the executor; set
+        it to a dedicated operator when whoever acts on a trigger is not the
+        tripwire's author. It is frozen into the charter and its digest, so it
+        cannot be changed after registration.
+        """
         handle = _guard(lambda: normalize_charter_id(charter_id))
         if self.charters.get(handle) is not None:
             _err("charter id already registered")
+
+        author = self._sender()
+        if str(executor).strip():
+            executor_hex = normalize_address(executor)
+            if not executor_hex:
+                _err("executor address is invalid")
+        else:
+            executor_hex = author
 
         pol = _guard(lambda: normalize_policy(policy))
         pats = _guard(lambda: normalize_patterns(evidence_patterns))
@@ -293,10 +310,13 @@ class Circuit(gl.contract.Contract):
             _err("fee must not exceed the bond")
 
         treasury_hex = self.treasury.as_hex.lower()
-        chash = charter_digest(handle, pol, pats, tgt, ac, md, bond, fee, treasury_hex)
+        chash = charter_digest(
+            handle, pol, pats, tgt, ac, md, bond, fee, treasury_hex, executor_hex
+        )
         charter = {
             "charter_id": handle,
-            "author": self._sender(),
+            "author": author,
+            "executor": executor_hex,
             "policy": pol,
             "evidence_patterns": pats,
             "target": tgt,
@@ -377,6 +397,7 @@ class Circuit(gl.contract.Contract):
             "evidence_urls": urls,
             "digest": digest,
             "assessor": self._sender(),
+            "executor": charter["executor"],
             "bond": str(value - fee),
             "fee": str(fee),
             "status": ST_OPEN,
@@ -465,6 +486,7 @@ class Circuit(gl.contract.Contract):
             "incident_id": incident["incident_id"],
             "charter_id": incident["charter_id"],
             "digest": incident["digest"],
+            "executor": incident["executor"],
             "target": incident["target"],
             "action_class": incident["action_class"],
             "scope": incident["scope"],
@@ -492,7 +514,12 @@ class Circuit(gl.contract.Contract):
     ) -> str:
         """Consume a capability exactly once, re-deriving its digest first.
 
-        The caller's arguments must reproduce the digest frozen at open time.
+        Only the capability's authorized executor — the address frozen into the
+        charter at registration — may consume it; anyone else is rejected before
+        the digest is even considered, so an unrelated caller cannot drain or
+        invalidate a capability that is not theirs.
+
+        The executor's arguments must reproduce the digest frozen at open time.
         A mismatch is a rejection, not a warning: the whole point of the
         capability is that what a downstream system acts on is byte-for-byte
         what the validators confirmed.
@@ -500,6 +527,8 @@ class Circuit(gl.contract.Contract):
         capability = self._load_capability(capability_id)
         if capability is None:
             _err("capability not found")
+        if self._sender() != str(capability.get("executor", "")).lower():
+            _err("caller is not the authorized executor")
         if capability["consumed"]:
             _err("capability already consumed")
         if capability["expired"] or self._now() > int(capability["expires_at"]):

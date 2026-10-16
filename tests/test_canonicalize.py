@@ -29,11 +29,14 @@ def test_charter_digest_is_field_sensitive():
         "bond_amount": 100,
         "fee_amount": 10,
         "treasury": "0x" + "aa" * 20,
+        "executor": "0x" + "bb" * 20,
     }
     d1 = canon.charter_digest(**base)
     assert d1 == canon.charter_digest(**base)
     changed = {**base, "policy": "trip on anything"}
     assert canon.charter_digest(**changed) != d1
+    # The executor is part of the frozen identity.
+    assert canon.charter_digest(**{**base, "executor": "0x" + "cc" * 20}) != d1
 
 
 @pytest.mark.parametrize(
